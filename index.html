@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SWAT | Personnel Database</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=JetBrains+Mono&display=swap');
+
+        :root {
+            --bg-dark: #0a0c10;
+            --glass: rgba(17, 24, 39, 0.8);
+            --accent: #3b82f6;
+            --hazmat: #f59e0b;
+            --hc: #ef4444;
+        }
+
+        body {
+            background: radial-gradient(circle at top right, #1e293b, #0a0c10);
+            font-family: 'Inter', sans-serif;
+            color: #f3f4f6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .glass-panel {
+            background: var(--glass);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+        }
+
+        .stat-card {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent);
+        }
+
+        .search-input {
+            transition: all 0.3s ease;
+            background: rgba(0, 0, 0, 0.3);
+        }
+        .search-input:focus {
+            box-shadow: 0 0 0 2px var(--accent);
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        /* Animations */
+        @keyframes fadeInSlide {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .personnel-row {
+            animation: fadeInSlide 0.5s ease forwards;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* Modal / Detail View */
+        #detail-view {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateX(100%);
+        }
+        #detail-view.active {
+            transform: translateX(0);
+        }
+
+        .scanline {
+            width: 100%;
+            height: 2px;
+            background: rgba(59, 130, 246, 0.1);
+            position: fixed;
+            top: 0;
+            z-index: 999;
+            pointer-events: none;
+            animation: scan 8s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0a0c10; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="scanline"></div>
+
+    <!-- Personnel Detail Sidebar -->
+    <div id="detail-view" class="fixed top-0 right-0 h-full w-full md:w-[450px] z-[1000] glass-panel border-l border-white/10 p-8 shadow-2xl overflow-y-auto">
+        <button onclick="closeDetails()" class="mb-8 text-slate-400 hover:text-white transition-colors flex items-center gap-2 font-bold uppercase tracking-widest text-xs">
+            <i class="fa-solid fa-arrow-left"></i> Back to Fleet
+        </button>
+
+        <div id="detail-content">
+            <!-- Dynamic Content -->
+        </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-6 personnel-row" style="animation-delay: 0.1s">
+            <div>
+                <h1 class="text-4xl font-extrabold tracking-tighter text-white flex items-center gap-3">
+                    <i class="fa-solid fa-shield-halved text-blue-500"></i>
+                    SWAT <span class="text-blue-500">DATABASE</span>
+                </h1>
+                <p class="text-slate-400 font-mono text-sm mt-1 uppercase tracking-widest">Liberty County Specialized Unit</p>
+            </div>
+            <div class="flex gap-4">
+                <div class="glass-panel px-6 py-3 rounded-xl border-l-4 border-blue-500">
+                    <div class="text-xs text-slate-400 uppercase font-bold tracking-widest">Commander</div>
+                    <div class="text-lg font-bold text-white">Ryanlikeshockey</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats Row -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 personnel-row" style="animation-delay: 0.2s">
+            <div class="glass-panel stat-card p-6 rounded-2xl flex items-center justify-between">
+                <div>
+                    <p class="text-slate-400 text-sm font-bold uppercase tracking-wider text-[10px]">Unit Capacity</p>
+                    <h2 id="total-count" class="text-3xl font-black text-white mt-1">0</h2>
+                </div>
+                <i class="fa-solid fa-users text-blue-500 text-3xl opacity-30"></i>
+            </div>
+            <div class="glass-panel stat-card p-6 rounded-2xl flex items-center justify-between">
+                <div>
+                    <p class="text-slate-400 text-sm font-bold uppercase tracking-wider text-[10px]">Command Staff</p>
+                    <h2 id="hc-count" class="text-3xl font-black text-red-500 mt-1">0</h2>
+                </div>
+                <i class="fa-solid fa-star text-red-500 text-3xl opacity-30"></i>
+            </div>
+            <div class="glass-panel stat-card p-6 rounded-2xl flex items-center justify-between">
+                <div>
+                    <p class="text-slate-400 text-sm font-bold uppercase tracking-wider text-[10px]">Hazmat Active</p>
+                    <h2 id="hazmat-count" class="text-3xl font-black text-amber-500 mt-1">0</h2>
+                </div>
+                <i class="fa-solid fa-biohazard text-amber-500 text-3xl opacity-30"></i>
+            </div>
+        </div>
+
+        <!-- Search -->
+        <div class="mb-8 personnel-row" style="animation-delay: 0.3s">
+            <div class="relative group">
+                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors"></i>
+                <input 
+                    type="text" 
+                    id="search" 
+                    placeholder="Search personnel callsign or division..." 
+                    class="w-full search-input py-4 pl-12 pr-4 rounded-xl text-white outline-none border border-white/10 shadow-inner"
+                >
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="glass-panel rounded-3xl overflow-hidden personnel-row" style="animation-delay: 0.4s">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-black/40 border-b border-white/5">
+                            <th class="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Personnel Name</th>
+                            <th class="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Main Rank</th>
+                            <th class="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Divisions</th>
+                            <th class="px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="personnel-list"></tbody>
+                </table>
+            </div>
+            <div id="no-results" class="hidden py-20 text-center">
+                <i class="fa-solid fa-user-slash text-4xl text-slate-700 mb-4"></i>
+                <p class="text-slate-500 font-medium font-mono uppercase text-xs tracking-widest">No active matches found in database</p>
+            </div>
+        </div>
+
+        <footer class="mt-12 text-center text-slate-700 text-[10px] font-mono uppercase tracking-[0.3em] personnel-row" style="animation-delay: 0.5s">
+            Official Personnel Records // Liberty County Specialized Unit
+        </footer>
+    </div>
+
+    <script>
+        /**
+         * HOW TO ADD NEW PERSONNEL:
+         * 1. Copy the template block below.
+         * 2. Paste it at the end of the 'personnel' array.
+         * 3. Fill in the name, rank, and joined date (YYYY-MM-DD).
+         * * TEMPLATE:
+         * { 
+         * name: "Username", rank: "Operator", division: "Operations", category: "OPS", icon: "fa-gun",
+         * joined: "2026-01-02", hazmat: { active: false }, specialization: "TBD", status: "Operational"
+         * },
+         */
+
+        const personnel = [
+            { 
+                name: "Ryanlikeshockey", 
+                rank: "Commander", 
+                division: "HC / Hazmat", 
+                category: "HC-HM", 
+                icon: "fa-crown",
+                joined: "2025-12-31",
+                hazmat: { active: true, rank: "Certified Specialist" },
+                specialization: "Strategic Operations / Unit Oversight",
+                status: "Operational"
+            },
+            { 
+                name: "cooldude121162", 
+                rank: "Deputy Commander", 
+                division: "Hazmat / High Command", 
+                category: "HC-HM", 
+                icon: "fa-shield-halved",
+                joined: "2025-12-31",
+                hazmat: { active: true, rank: "Head of Hazmat" },
+                specialization: "CBRN Defense / Tactical Response",
+                status: "Operational"
+            },
+            { 
+                name: "CodeNameMartin", rank: "Operator", division: "Operations", category: "OPS", icon: "fa-gun",
+                joined: "2026-01-01", hazmat: { active: false }, specialization: "Breacher", status: "Operational"
+            },
+            { 
+                name: "animal90801", rank: "Operator", division: "Operations", category: "OPS", icon: "fa-gun",
+                joined: "2026-01-01", hazmat: { active: false }, specialization: "Sniper Support", status: "Operational"
+            },
+            { 
+                name: "urseklsjn167288", rank: "Operator", division: "Operations", category: "OPS", icon: "fa-gun",
+                joined: "2026-01-01", hazmat: { active: false }, specialization: "Field Medic", status: "Operational"
+            },
+            { 
+                name: "lcant0408", rank: "Operator", division: "Operations", category: "OPS", icon: "fa-gun",
+                joined: "2026-01-01", hazmat: { active: false }, specialization: "Entry Specialist", status: "Operational"
+            },
+            { 
+                name: "Figurelli85", rank: "Operator", division: "Operations", category: "OPS", icon: "fa-gun",
+                joined: "2026-01-02", hazmat: { active: false }, specialization: "Point Man", status: "Operational"
+            },
+            { 
+                name: "Henry_Dynamite", rank: "Operator", division: "Operations", category: "OPS", icon: "fa-gun",
+                joined: "2026-01-02", hazmat: { active: false }, specialization: "Heavy Weapons", status: "Operational"
+            },
+            { 
+                name: "CMD_rblx", rank: "Operator", division: "Operations", category: "OPS", icon: "fa-gun",
+                joined: "2026-01-02", hazmat: { active: false }, specialization: "Tactical Communications", status: "Operational"
+            },
+            { 
+                name: "camlovesroblox123", rank: "Operator", division: "Operations", category: "OPS", icon: "fa-gun",
+                joined: "2026-01-02", hazmat: { active: false }, specialization: "Recruit Support", status: "Operational"
+            }
+        ];
+
+        function calculateServiceLength(dateString) {
+            const start = new Date(dateString);
+            const now = new Date();
+            const startDate = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+            const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+            if (startDate > nowDate) return "New Recruit";
+            const diffTime = Math.abs(nowDate - startDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays >= 365) return `${(diffDays/365).toFixed(1)} Years`;
+            if (diffDays >= 30) return `${Math.floor(diffDays/30)} Months`;
+            if (diffDays === 0) return "Joined Today";
+            return `${diffDays} Days`;
+        }
+
+        function showDetails(name) {
+            const p = personnel.find(x => x.name === name);
+            if (!p) return;
+
+            const content = document.getElementById('detail-content');
+            content.innerHTML = `
+                <div class="animate-in fade-in slide-in-from-right duration-500">
+                    <div class="flex items-center gap-6 mb-8">
+                        <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-900 flex items-center justify-center border border-white/20 shadow-xl">
+                            <i class="fa-solid ${p.icon} text-3xl text-white"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-3xl font-black text-white">${p.name}</h2>
+                            <p class="text-blue-400 font-mono text-sm tracking-widest uppercase">${p.rank}</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div class="bg-black/40 p-5 rounded-xl border border-white/5">
+                            <h3 class="text-[10px] font-black uppercase text-slate-500 mb-3 tracking-widest">Service Record</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-[10px] text-slate-400 uppercase">Total Service</p>
+                                    <p class="text-white font-bold">${calculateServiceLength(p.joined)}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-slate-400 uppercase">Entry Date</p>
+                                    <p class="text-white font-bold">${p.joined}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-black/40 p-5 rounded-xl border border-white/5">
+                            <h3 class="text-[10px] font-black uppercase text-slate-500 mb-3 tracking-widest">Core Specialization</h3>
+                            <p class="text-white font-medium text-sm leading-relaxed">${p.specialization}</p>
+                        </div>
+
+                        <div class="bg-black/40 p-5 rounded-xl border border-white/5 border-l-4 ${p.hazmat.active ? 'border-amber-500' : 'border-slate-700'}">
+                            <h3 class="text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">Hazmat Division Status</h3>
+                            ${p.hazmat.active 
+                                ? `<p class="text-amber-500 font-black text-sm uppercase">Active - ${p.hazmat.rank}</p>` 
+                                : `<p class="text-slate-600 font-bold text-sm uppercase italic">Non-Hazmat Certified</p>`}
+                        </div>
+
+                        <div class="bg-black/40 p-5 rounded-xl border border-white/5">
+                            <h3 class="text-[10px] font-black uppercase text-slate-500 mb-2 tracking-widest">Operational Status</h3>
+                            <div class="flex items-center gap-2 text-emerald-500 font-black">
+                                <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                                ${p.status.toUpperCase()}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-12 p-4 border border-dashed border-white/10 rounded-lg text-center">
+                        <p class="text-[10px] text-slate-600 font-mono tracking-tighter italic">End of personnel report for UID_${p.name.toUpperCase()}</p>
+                    </div>
+                </div>
+            `;
+            document.getElementById('detail-view').classList.add('active');
+        }
+
+        function closeDetails() {
+            document.getElementById('detail-view').classList.remove('active');
+        }
+
+        function render(data) {
+            const list = document.getElementById('personnel-list');
+            list.innerHTML = '';
+            
+            if(data.length === 0) {
+                document.getElementById('no-results').classList.remove('hidden');
+                return;
+            }
+            document.getElementById('no-results').classList.add('hidden');
+
+            data.forEach((p, index) => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-white/5 hover:bg-white/5 transition-all group personnel-row';
+                row.style.animationDelay = `${index * 0.03}s`;
+                row.onclick = () => showDetails(p.name);
+
+                let tagColor = "text-blue-400 bg-blue-400/10 border-blue-400/20";
+                if(p.category.includes('HC')) tagColor = "text-red-400 bg-red-400/10 border-red-400/20";
+                if(p.category.includes('HM')) tagColor = "text-amber-400 bg-amber-400/10 border-amber-400/20";
+
+                row.innerHTML = `
+                    <td class="px-8 py-5">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center border border-white/10 group-hover:border-blue-500/50 transition-colors">
+                                <i class="fa-solid ${p.icon} text-slate-400 group-hover:text-blue-400"></i>
+                            </div>
+                            <span class="font-bold text-white tracking-tight">${p.name}</span>
+                        </div>
+                    </td>
+                    <td class="px-8 py-5 text-slate-300 font-medium text-sm">${p.rank}</td>
+                    <td class="px-8 py-5">
+                        <span class="px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border ${tagColor}">
+                            ${p.division}
+                        </span>
+                    </td>
+                    <td class="px-8 py-5">
+                        <div class="flex items-center gap-2 text-emerald-500 font-mono text-[10px] font-black">
+                            ACTIVE <i class="fa-solid fa-chevron-right opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                        </div>
+                    </td>
+                `;
+                list.appendChild(row);
+            });
+
+            document.getElementById('total-count').textContent = personnel.length;
+            document.getElementById('hc-count').textContent = personnel.filter(p => p.category.includes('HC')).length;
+            document.getElementById('hazmat-count').textContent = personnel.filter(p => p.hazmat.active).length;
+        }
+
+        document.getElementById('search').addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase();
+            const filtered = personnel.filter(p => 
+                p.name.toLowerCase().includes(val) || 
+                p.rank.toLowerCase().includes(val) || 
+                p.division.toLowerCase().includes(val)
+            );
+            render(filtered);
+        });
+
+        window.onload = () => render(personnel);
+    </script>
+</body>
+</html>
